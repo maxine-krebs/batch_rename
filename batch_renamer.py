@@ -1,6 +1,7 @@
 import os
 import argparse
 import re
+from pathlib import Path
 
 def main():
   parser = argparse.ArgumentParser()
@@ -12,35 +13,48 @@ def main():
   parser.add_argument("--dry-run", type=str2bool, nargs='?',
                         const=True, default=False,
                         help="dont actually write filename changes")
+  parser.add_argument("-v", type=str2bool, nargs='?',
+                        const=True, default=False,
+                        help="verbose output")
+
   args = parser.parse_args()
   skip_confirm = args.y
   dry_run = args.dry_run
   directory = args.directory
   type = args.type
+  verbose = args.v
 
   if type == "shows":
-    rename_matching("(^\S+)\.(s\d+e\d+)", directory, skip_confirm, dry_run)
+    rename_matching("(^\S+)\.(s\d+e\d+)", directory, skip_confirm, dry_run, verbose)
   elif type == "movies":
-    rename_matching("([\[a-zA-Z\]\.?]+)\.(\d+)", directory, skip_confirm, dry_run)
+    rename_matching("([\[a-zA-Z\]\.?]+)\.(\d+)", directory, skip_confirm, dry_run, verbose)
 
   print("done! 🎉")
 
-def rename_matching(pattern, directory, skip_confirm=False, dry_run=False):
+def rename_matching(pattern, directory, skip_confirm=False, dry_run=False, verbose=False):
   prog = re.compile(pattern, flags=re.I)
+  files = sorted(Path(directory).rglob('*.[ms][kpr][v4t]'))
 
-  for file in os.listdir(directory):
+  for file in files:
+    current_file = str(file)
     filename, file_extension = os.path.splitext(file)
     matches = prog.search(filename)
+
     if matches == None:
-      print("no matches found in filename: {0}".format(filename))
+      if verbose == True:
+        print("no matches found in filename: {0}".format(current_file))
       continue
 
     show_name = matches.group(0)
     new_title = show_name + file_extension
 
-    current_file = directory + file
     new_file = directory + new_title
-    if dry_run == True:
+
+    if current_file == new_file:
+      if verbose == True:
+        print("skipping: {0}".format(current_file, new_file))
+      continue
+    elif dry_run == True:
       print("{0} to: {1}".format(current_file, new_file))
     else:
       answer = ""
